@@ -1,0 +1,88 @@
+#!/bin/bash 
+
+PASS=0;
+WORKING_DIR="./tmp-validator";
+WGET_LOG_PATH="$WORKING_DIR/wget.log";
+REMOTE_ZIP_PATH="$WORKING_DIR/remote.zip";
+REMOTE_INFLATED_PATH="$WORKING_DIR/remote-inflated";
+LOCAL_INFLATED_PATH="$WORKING_DIR/local-inflated";
+REMOTE_SERIALIZED_PATH="$WORKING_DIR/remote-serialized";
+LOCAL_SERIALIZED_PATH="$WORKING_DIR/local-serialized";
+
+LOCAL_ZIP=$1;
+REMOTE_ZIP_URL=$2;
+
+if [ -z $LOCAL_ZIP ] || [ -z $REMOTE_ZIP_URL ]; then
+	echo "Two arguments are required: path to the local .zip file, and URL of the remote .zip file.";
+	exit -1;
+fi 
+
+echo "Validating equality between local .zip [$LOCAL_ZIP] and remote .zip [$REMOTE_ZIP_URL].";
+
+echo "Creating temporary working directory.";
+mkdir -p $WORKING_DIR;
+if [ $? -ne 0 ]; then 
+	echo "Failed to create temprary working directory.";
+	exit -1;
+fi
+
+echo "Downloading remote .zip [$REMOTE_ZIP_URL].";
+wget -o $WGET_LOG_PATH -O $REMOTE_ZIP_PATH -- $REMOTE_ZIP_URL;
+if [ $? -ne 0 ]; then 
+	echo "Failed to download remote .zip [$REMOTE_ZIP_URL]:";
+	cat $WGET_LOG_PATH;
+	exit -1;
+fi
+
+echo "Inflating remote .zip.";
+unzip -q $REMOTE_ZIP_PATH -d $REMOTE_INFLATED_PATH;
+if [ $? -ne 0 ]; then 
+	echo "Failed to inflate remote .zip.";
+	exit -1;
+fi 
+
+echo "Inflating local .zip [$LOCAL_ZIP].";
+unzip -q $LOCAL_ZIP -d $LOCAL_INFLATED_PATH;
+if [ $? -ne 0 ]; then 
+	echo "Failed to inflate local .zip [$LOCAL_ZIP].";
+	exit -1;
+fi 
+
+echo "Generating list of files to serialize.";
+REMOTE_FILES=( $(find $REMOTE_INFLATED_PATH) );
+LOCAL_FILES=( $(find $LOCAL_INFLATED_PATH) );
+
+echo "Serializing remote files.";
+for file in ${REMOTE_FILES[@]}; do 
+	if [ ! -d $file ]; then 
+		cat $file >> $REMOTE_SERIALIZED_PATH;
+	fi
+done 
+
+echo "Serializing local files.";
+for file in ${LOCAL_FILES[@]}; do
+	if [ ! -d $file ]; then 
+		cat $file >> $LOCAL_SERIALIZED_PATH;
+	fi
+done 
+
+LOCAL_DIGEST=`md5 -q $LOCAL_SERIALIZED_PATH`;
+REMOTE_DIGEST=`md5 -q $REMOTE_SERIALIZED_PATH`;
+
+if [ $LOCAL_DIGEST == $REMOTE_DIGEST ]; then 
+	echo "Remote and local digests are equivalent [$LOCAL_DIGEST].";
+	PASS=1;
+else
+	echo "Remote digest [$REMOTE_DIGEST] != local digest [$LOCAL_DIGEST].";
+fi 
+
+echo "Cleaning up.";
+rm -r $WORKING_DIR;
+
+if [ $PASS ]; then 
+	echo "[PASS]";
+else
+	echo "[FAIL]";
+	exit 1;
+fi
+
