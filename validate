@@ -33,25 +33,6 @@ if [ $? -ne 0 ]; then
 	exit -1;
 fi
 
-if [[ $RIGHT_ZIP == http* ]]; then 
-	echo "Right .zip is remote, downloading from [$RIGHT_ZIP].";
-	wget -o $WGET_LOG_PATH -O $RIGHT_ZIP_PATH -- $RIGHT_ZIP;
-	if [ $? -ne 0 ]; then 
-		echo "Failed to download right .zip from [$RIGHT_ZIP].";
-		cat $WGET_LOG_PATH;
-		exit -1;
-	fi
-
-	rm $WGET_LOG_PATH;
-else
-	if [ ! -e $RIGHT_ZIP ]; then 
-		echo "Right .zip [$RIGHT_ZIP] does not exist.";
-		exit -1;
-	fi 
-
-	RIGHT_ZIP_PATH=$RIGHT_ZIP;
-fi
-
 if [[ $LEFT_ZIP == http* ]]; then
 	echo "Left .zip is remote, downloading from [$LEFT_ZIP].";
 	wget -o $WGET_LOG_PATH -O $LEFT_ZIP_PATH -- $LEFT_ZIP;
@@ -60,6 +41,8 @@ if [[ $LEFT_ZIP == http* ]]; then
 		cat $WGET_LOG_PATH;
 		exit -1;
 	fi
+
+	rm $WGET_LOG_PATH;
 else 
 	if [ ! -e $LEFT_ZIP ]; then 
 		echo "Left .zip [$LEFT_ZIP] does not exist.";
@@ -69,12 +52,22 @@ else
 	LEFT_ZIP_PATH=$LEFT_ZIP;
 fi
 
-echo "Inflating right .zip.";
-unzip -q $RIGHT_ZIP_PATH -d $RIGHT_INFLATED_PATH;
-if [ $? -ne 0 ]; then 
-	echo "Failed to inflate right .zip.";
-	exit -1;
-fi 
+if [[ $RIGHT_ZIP == http* ]]; then 
+	echo "Right .zip is remote, downloading from [$RIGHT_ZIP].";
+	wget -o $WGET_LOG_PATH -O $RIGHT_ZIP_PATH -- $RIGHT_ZIP;
+	if [ $? -ne 0 ]; then 
+		echo "Failed to download right .zip from [$RIGHT_ZIP].";
+		cat $WGET_LOG_PATH;
+		exit -1;
+	fi
+else
+	if [ ! -e $RIGHT_ZIP ]; then 
+		echo "Right .zip [$RIGHT_ZIP] does not exist.";
+		exit -1;
+	fi 
+
+	RIGHT_ZIP_PATH=$RIGHT_ZIP;
+fi
 
 echo "Inflating left .zip [$LEFT_ZIP].";
 unzip -q $LEFT_ZIP -d $LEFT_INFLATED_PATH;
@@ -83,9 +76,16 @@ if [ $? -ne 0 ]; then
 	exit -1;
 fi 
 
+echo "Inflating right .zip.";
+unzip -q $RIGHT_ZIP_PATH -d $RIGHT_INFLATED_PATH;
+if [ $? -ne 0 ]; then 
+	echo "Failed to inflate right .zip.";
+	exit -1;
+fi 
+
 echo "Comparing directory structures.";
-tree $RIGHT_INFLATED_PATH | tail -n +2 > $RIGHT_TREE_PATH;
 tree $LEFT_INFLATED_PATH | tail -n +2 > $LEFT_TREE_PATH;
+tree $RIGHT_INFLATED_PATH | tail -n +2 > $RIGHT_TREE_PATH;
 if [ $(md5 -q $LEFT_TREE_PATH) != $(md5 -q $RIGHT_TREE_PATH) ]; then 
 	echo "Structures differ:";
 	diff -y --suppress-common-lines $LEFT_TREE_PATH $RIGHT_TREE_PATH;
@@ -95,15 +95,8 @@ else
 fi 
 
 echo "Generating list of files to serialize.";
-RIGHT_FILES=( $(find $RIGHT_INFLATED_PATH) );
 LEFT_FILES=( $(find $LEFT_INFLATED_PATH) );
-
-echo "Serializing right files.";
-for file in ${RIGHT_FILES[@]}; do 
-	if [ ! -d $file ]; then 
-		cat $file >> $RIGHT_SERIALIZED_PATH;
-	fi
-done 
+RIGHT_FILES=( $(find $RIGHT_INFLATED_PATH) );
 
 echo "Serializing left files.";
 for file in ${LEFT_FILES[@]}; do
@@ -112,10 +105,17 @@ for file in ${LEFT_FILES[@]}; do
 	fi
 done 
 
+echo "Serializing right files.";
+for file in ${RIGHT_FILES[@]}; do 
+	if [ ! -d $file ]; then 
+		cat $file >> $RIGHT_SERIALIZED_PATH;
+	fi
+done 
+
 LEFT_DIGEST=$(md5 -q $LEFT_SERIALIZED_PATH);
 RIGHT_DIGEST=$(md5 -q $RIGHT_SERIALIZED_PATH);
-echo "[$RIGHT_DIGEST] <- Right digest";
 echo "[$LEFT_DIGEST] <- Left digest";
+echo "[$RIGHT_DIGEST] <- Right digest";
 
 if [ $LEFT_DIGEST == $RIGHT_DIGEST ]; then 
 	echo "Cleaning up.";
