@@ -14,9 +14,23 @@ RIGHT_TREE_PATH="$WORKING_DIR/right-tree";
 LEFT_ZIP=$1;
 RIGHT_ZIP=$2;
 
-if [ -z $LEFT_ZIP ] || [ -z $RIGHT_ZIP ]; then
-	echo "Two arguments are required: a path or URL to two .zip files.";
+function error {
+	echo "[ERROR] $1";
 	exit -1;
+}
+
+function fail {
+	echo "[FAIL] $1";
+	exit 1;
+}
+
+function pass {
+	echo "[PASS]";
+	exit 0;
+}
+
+if [ -z $LEFT_ZIP ] || [ -z $RIGHT_ZIP ]; then
+	error "Two arguments are required: a path or URL to two .zip files.";
 fi 
 
 echo "Validating equality between left .zip [$LEFT_ZIP] and right .zip [$RIGHT_ZIP].";
@@ -29,24 +43,21 @@ fi
 echo "Creating working directory [$WORKING_DIR].";
 mkdir -p $WORKING_DIR;
 if [ $? -ne 0 ]; then 
-	echo "Failed to create working directory.";
-	exit -1;
+	error "Failed to create working directory.";
 fi
 
 if [[ $LEFT_ZIP == http* ]]; then
 	echo "Left .zip is remote, downloading from [$LEFT_ZIP].";
 	wget -o $WGET_LOG_PATH -O $LEFT_ZIP_PATH -- $LEFT_ZIP;
 	if [ $? -ne 0 ]; then 
-		echo "Failed to download left .zip from [$LEFT_ZIP].";
 		cat $WGET_LOG_PATH;
-		exit -1;
+		error "Failed to download left .zip from [$LEFT_ZIP].";
 	fi
 
 	rm $WGET_LOG_PATH;
 else 
 	if [ ! -e $LEFT_ZIP ]; then 
-		echo "Left .zip [$LEFT_ZIP] does not exist.";
-		exit -1;
+		error "Left .zip [$LEFT_ZIP] does not exist.";
 	fi 
 
 	LEFT_ZIP_PATH=$LEFT_ZIP;
@@ -56,14 +67,12 @@ if [[ $RIGHT_ZIP == http* ]]; then
 	echo "Right .zip is remote, downloading from [$RIGHT_ZIP].";
 	wget -o $WGET_LOG_PATH -O $RIGHT_ZIP_PATH -- $RIGHT_ZIP;
 	if [ $? -ne 0 ]; then 
-		echo "Failed to download right .zip from [$RIGHT_ZIP].";
 		cat $WGET_LOG_PATH;
-		exit -1;
+		error "Failed to download right .zip from [$RIGHT_ZIP].";
 	fi
 else
 	if [ ! -e $RIGHT_ZIP ]; then 
-		echo "Right .zip [$RIGHT_ZIP] does not exist.";
-		exit -1;
+		error "Right .zip [$RIGHT_ZIP] does not exist.";
 	fi 
 
 	RIGHT_ZIP_PATH=$RIGHT_ZIP;
@@ -72,24 +81,21 @@ fi
 echo "Inflating left .zip.";
 unzip -q $LEFT_ZIP -d $LEFT_INFLATED_PATH;
 if [ $? -ne 0 ]; then 
-	echo "Failed to inflate left .zip.";
-	exit -1;
+	error "Failed to inflate left .zip.";
 fi 
 
 echo "Inflating right .zip.";
 unzip -q $RIGHT_ZIP_PATH -d $RIGHT_INFLATED_PATH;
 if [ $? -ne 0 ]; then 
-	echo "Failed to inflate right .zip.";
-	exit -1;
+	error "Failed to inflate right .zip.";
 fi 
 
 echo "Comparing directory structures.";
 tree $LEFT_INFLATED_PATH | tail -n +2 > $LEFT_TREE_PATH;
 tree $RIGHT_INFLATED_PATH | tail -n +2 > $RIGHT_TREE_PATH;
 if [ $(md5 -q $LEFT_TREE_PATH) != $(md5 -q $RIGHT_TREE_PATH) ]; then 
-	echo "Structures differ:";
 	diff -y --suppress-common-lines $LEFT_TREE_PATH $RIGHT_TREE_PATH;
-	exit -1;
+	fail "Structures differ.";
 else 
 	echo "Directory structures are equivalent.";
 fi 
@@ -120,9 +126,8 @@ echo "[$RIGHT_DIGEST] <- Right digest";
 if [ $LEFT_DIGEST == $RIGHT_DIGEST ]; then 
 	echo "Cleaning up.";
 	rm -r $WORKING_DIR;
-	echo "[PASS]";
+	pass 
 else
-	echo "[FAIL]";
-	exit 1;
+	fail "Digests differ.";
 fi 
 
