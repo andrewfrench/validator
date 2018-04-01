@@ -7,6 +7,8 @@ RIGHT_INFLATED_PATH="$WORKING_DIR/right-inflated";
 LEFT_INFLATED_PATH="$WORKING_DIR/left-inflated";
 RIGHT_SERIALIZED_PATH="$WORKING_DIR/right-serialized";
 LEFT_SERIALIZED_PATH="$WORKING_DIR/left-serialized";
+LEFT_TREE_PATH="$WORKING_DIR/left-tree";
+RIGHT_TREE_PATH="$WORKING_DIR/right-tree":
 
 LEFT_ZIP=$1;
 RIGHT_ZIP=$2;
@@ -30,6 +32,18 @@ if [ $? -ne 0 ]; then
 	exit -1;
 fi
 
+if [[ $RIGHT_ZIP == http* ]]; then 
+	echo "Right .zip is remote, downloading from [$RIGHT_ZIP].";
+	wget -o $WGET_LOG_PATH -O $RIGHT_ZIP_PATH -- $RIGHT_ZIP;
+	if [ $? -ne 0 ]; then 
+		echo "Failed to download right .zip from [$RIGHT_ZIP].";
+		cat $WGET_LOG_PATH;
+		exit -1;
+	fi
+else
+	echo "Right .zip is local [$RIGHT_ZIP].";
+fi
+
 if [[ $LEFT_ZIP == http* ]]; then
 	echo "Left .zip is remote, downloading from [$LEFT_ZIP].";
 	wget -o $WGET_LOG_PATH -O $LEFT_ZIP_PATH -- $LEFT_ZIP;
@@ -44,18 +58,6 @@ else
 	echo "Left .zip is local [$LEFT_ZIP].";
 fi
 
-if [[ $RIGHT_ZIP == http* ]]; then 
-	echo "Right .zip is remote, downloading from [$RIGHT_ZIP].";
-	wget -o $WGET_LOG_PATH -O $RIGHT_ZIP_PATH -- $RIGHT_ZIP;
-	if [ $? -ne 0 ]; then 
-		echo "Failed to download right .zip from [$RIGHT_ZIP].";
-		cat $WGET_LOG_PATH;
-		exit -1;
-	fi
-else
-	echo "Right .zip is local [$RIGHT_ZIP].";
-fi
-
 echo "Inflating right .zip.";
 unzip -q $RIGHT_ZIP_PATH -d $RIGHT_INFLATED_PATH;
 if [ $? -ne 0 ]; then 
@@ -68,6 +70,17 @@ unzip -q $LEFT_ZIP -d $LEFT_INFLATED_PATH;
 if [ $? -ne 0 ]; then 
 	echo "Failed to inflate left .zip [$LEFT_ZIP].";
 	exit -1;
+fi 
+
+echo "Comparing directory structures.";
+tree $RIGHT_INFLATED_PATH > $RIGHT_TREE_PATH;
+tree $LEFT_INFLATED_PATH > $LEFT_TREE_PATH;
+if [ $(md5 -q $LEFT_TREE_PATH) != $(md5 -q $RIGHT_TREE_PATH) ]; then 
+	echo "Structures differ:";
+	diff -y --suppress-common-lines $LEFT_TREE_PATH $RIGHT_TREE_PATH;
+	exit -1;
+else 
+	echo "Directory structures are equivalent.";
 fi 
 
 echo "Generating list of files to serialize.";
