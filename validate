@@ -3,12 +3,13 @@
 WORKING_DIR="./tmp-validator";
 WGET_LOG_PATH="$WORKING_DIR/wget.log";
 RIGHT_ZIP_PATH="$WORKING_DIR/right.zip";
+LEFT_ZIP_PATH="$WORKING_DIR/left.zip";
 RIGHT_INFLATED_PATH="$WORKING_DIR/right-inflated";
 LEFT_INFLATED_PATH="$WORKING_DIR/left-inflated";
 RIGHT_SERIALIZED_PATH="$WORKING_DIR/right-serialized";
 LEFT_SERIALIZED_PATH="$WORKING_DIR/left-serialized";
 LEFT_TREE_PATH="$WORKING_DIR/left-tree";
-RIGHT_TREE_PATH="$WORKING_DIR/right-tree":
+RIGHT_TREE_PATH="$WORKING_DIR/right-tree";
 
 LEFT_ZIP=$1;
 RIGHT_ZIP=$2;
@@ -48,7 +49,7 @@ else
 		exit -1;
 	fi 
 
-	echo "Right .zip is local [$RIGHT_ZIP].";
+	RIGHT_ZIP_PATH=$RIGHT_ZIP;
 fi
 
 if [[ $LEFT_ZIP == http* ]]; then
@@ -65,7 +66,7 @@ else
 		exit -1;
 	fi 
 
-	echo "Left .zip is local [$LEFT_ZIP].";
+	LEFT_ZIP_PATH=$LEFT_ZIP;
 fi
 
 echo "Inflating right .zip.";
@@ -83,8 +84,8 @@ if [ $? -ne 0 ]; then
 fi 
 
 echo "Comparing directory structures.";
-tree $RIGHT_INFLATED_PATH > $RIGHT_TREE_PATH;
-tree $LEFT_INFLATED_PATH > $LEFT_TREE_PATH;
+tree $RIGHT_INFLATED_PATH | tail -n +2 > $RIGHT_TREE_PATH;
+tree $LEFT_INFLATED_PATH | tail -n +2 > $LEFT_TREE_PATH;
 if [ $(md5 -q $LEFT_TREE_PATH) != $(md5 -q $RIGHT_TREE_PATH) ]; then 
 	echo "Structures differ:";
 	diff -y --suppress-common-lines $LEFT_TREE_PATH $RIGHT_TREE_PATH;
@@ -111,8 +112,8 @@ for file in ${LEFT_FILES[@]}; do
 	fi
 done 
 
-LEFT_DIGEST=`md5 -q $LEFT_SERIALIZED_PATH`;
-RIGHT_DIGEST=`md5 -q $RIGHT_SERIALIZED_PATH`;
+LEFT_DIGEST=$(md5 -q $LEFT_SERIALIZED_PATH);
+RIGHT_DIGEST=$(md5 -q $RIGHT_SERIALIZED_PATH);
 echo "[$RIGHT_DIGEST] <- Right digest";
 echo "[$LEFT_DIGEST] <- Left digest";
 
