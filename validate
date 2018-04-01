@@ -69,10 +69,10 @@ else
 	RIGHT_ZIP_PATH=$RIGHT_ZIP;
 fi
 
-echo "Inflating left .zip [$LEFT_ZIP].";
+echo "Inflating left .zip.";
 unzip -q $LEFT_ZIP -d $LEFT_INFLATED_PATH;
 if [ $? -ne 0 ]; then 
-	echo "Failed to inflate left .zip [$LEFT_ZIP].";
+	echo "Failed to inflate left .zip.";
 	exit -1;
 fi 
 
