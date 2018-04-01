@@ -101,8 +101,8 @@ else
 fi 
 
 echo "Generating list of files to serialize.";
-LEFT_FILES=( $(find $LEFT_INFLATED_PATH) );
-RIGHT_FILES=( $(find $RIGHT_INFLATED_PATH) );
+LEFT_FILES=( $(find -s $LEFT_INFLATED_PATH) );
+RIGHT_FILES=( $(find -s $RIGHT_INFLATED_PATH) );
 
 echo "Serializing left files.";
 for file in ${LEFT_FILES[@]}; do
