@@ -40,7 +40,14 @@ if [[ $RIGHT_ZIP == http* ]]; then
 		cat $WGET_LOG_PATH;
 		exit -1;
 	fi
+
+	rm $WGET_LOG_PATH;
 else
+	if [ ! -e $RIGHT_ZIP ]; then 
+		echo "Right .zip [$RIGHT_ZIP] does not exist.";
+		exit -1;
+	fi 
+
 	echo "Right .zip is local [$RIGHT_ZIP].";
 fi
 
@@ -52,9 +59,12 @@ if [[ $LEFT_ZIP == http* ]]; then
 		cat $WGET_LOG_PATH;
 		exit -1;
 	fi
-
-	rm $WGET_LOG_PATH;
 else 
+	if [ ! -e $LEFT_ZIP ]; then 
+		echo "Left .zip [$LEFT_ZIP] does not exist.";
+		exit -1;
+	fi 
+
 	echo "Left .zip is local [$LEFT_ZIP].";
 fi
 
